@@ -16,7 +16,14 @@ import AirtimePage  from './pages/customer/AirtimePage';
 import KCBPage      from './pages/customer/KCBPage';
 import AccountPage  from './pages/customer/AccountPage';
 import AgentDashboard from './pages/agent/AgentDashboard';
-import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminDashboard      from './pages/admin/AdminDashboard';
+import AdminOverview       from './pages/admin/AdminOverview';
+import AdminUsers          from './pages/admin/AdminUsers';
+import AdminTransactions   from './pages/admin/AdminTransactions';
+import AdminAgents         from './pages/admin/AdminAgents';
+import AdminBillers        from './pages/admin/AdminBillers';
+import AdminNotifications  from './pages/admin/AdminNotifications';
+import AdminSettings       from './pages/admin/AdminSettings';
 import CustomerCareDashboard from './pages/customercare/CustomerCareDashboard';
 
 import './styles/global-style.css';
@@ -88,13 +95,13 @@ const AppRouter = () => {
         return <AgentDashboard onNavigate={navigate} />;
 
       // Admin routes
-      case '/admin':
-      case '/admin/users':
-      case '/admin/transactions':
-      case '/admin/agents':
-      case '/admin/analytics':
-      case '/admin/settings':
-        return <AdminDashboard onNavigate={navigate} />;
+      case '/admin':           return <AdminOverview      onNavigate={navigate} />;
+      case '/admin/users':     return <AdminUsers         onNavigate={navigate} />;
+      case '/admin/transactions': return <AdminTransactions onNavigate={navigate} />;
+      case '/admin/agents':    return <AdminAgents        onNavigate={navigate} />;
+      case '/admin/billers':   return <AdminBillers       onNavigate={navigate} />;
+      case '/admin/notifications': return <AdminNotifications onNavigate={navigate} />;
+      case '/admin/settings':  return <AdminSettings      onNavigate={navigate} />;
 
       // Customer Care routes
       case '/care':
