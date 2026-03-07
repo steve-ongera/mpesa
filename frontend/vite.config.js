@@ -15,13 +15,11 @@ export default defineConfig({
     port: 3000,
     open: true,
     proxy: {
-      // Proxy REST API calls to Django backend
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },
-      // Proxy WebSocket connections to Django Channels / Daphne
       '/ws': {
         target: 'ws://localhost:8000',
         ws: true,

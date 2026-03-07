@@ -1,95 +1,107 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { authHelpers, WebSocketService, dashboardAPI, accountAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(authHelpers.getUser());
-  const [mpesaBalance, setMpesaBalance] = useState(null);
+  // Safely read stored user — never crash if localStorage has bad JSON
+  const [user, setUser] = useState(() => {
+    try { return authHelpers.getUser(); }
+    catch { return null; }
+  });
+
+  const [mpesaBalance,   setMpesaBalance]   = useState(null);
   const [mshwariBalance, setMshwariBalance] = useState(null);
-  const [kcbBalance, setKcbBalance] = useState(null);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [wsService, setWsService] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [kcbBalance,     setKcbBalance]     = useState(null);
+  const [notifications,  setNotifications]  = useState([]);
+  const [unreadCount,    setUnreadCount]    = useState(0);
+  const [isLoading,      setIsLoading]      = useState(false);
 
-  // Initialize WebSocket when user logs in
+  // Use a ref so the latest ws instance is always accessible in logout
+  const wsRef = useRef(null);
+
   useEffect(() => {
-    if (user?.id) {
-      const ws = new WebSocketService(user.id, {
-        onNotification: (data) => {
-          setNotifications(prev => [data, ...prev]);
-          setUnreadCount(prev => prev + 1);
-          // Show toast
-          window.dispatchEvent(new CustomEvent('mpesa-notification', { detail: data }));
-        },
-        onBalanceUpdate: (data) => {
-          if (data.mpesa_balance !== undefined) setMpesaBalance(data.mpesa_balance);
-          if (data.mshwari_balance !== undefined) setMshwariBalance(data.mshwari_balance);
-          if (data.kcb_balance !== undefined) setKcbBalance(data.kcb_balance);
-        },
-        onTransaction: (data) => {
-          window.dispatchEvent(new CustomEvent('mpesa-transaction', { detail: data }));
-        },
-        onConnect: () => console.log('Real-time connected'),
-        onDisconnect: () => console.log('Real-time disconnected'),
-      });
-      ws.connect();
-      setWsService(ws);
+    if (!user?.id) return;
 
-      // Load initial balance
-      loadBalance();
-      loadNotifications();
+    // If there's no token, clear the stale user rather than firing 401s
+    const token = localStorage.getItem('access_token');
+    if (!token) { setUser(null); return; }
 
-      return () => ws.disconnect();
-    }
-  }, [user?.id]);
+    const ws = new WebSocketService(user.id, {
+      onNotification: (data) => {
+        setNotifications(prev => [data, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        window.dispatchEvent(new CustomEvent('mpesa-notification', { detail: data }));
+      },
+      onBalanceUpdate: (data) => {
+        if (data.mpesa_balance   !== undefined) setMpesaBalance(data.mpesa_balance);
+        if (data.mshwari_balance !== undefined) setMshwariBalance(data.mshwari_balance);
+        if (data.kcb_balance     !== undefined) setKcbBalance(data.kcb_balance);
+      },
+      onTransaction: (data) => {
+        window.dispatchEvent(new CustomEvent('mpesa-transaction', { detail: data }));
+      },
+      onConnect:    () => console.log('[WS] connected'),
+      onDisconnect: () => console.log('[WS] disconnected'),
+    });
+
+    ws.connect();
+    wsRef.current = ws;
+
+    loadBalance();
+    loadNotifications();
+
+    return () => { ws.disconnect(); wsRef.current = null; };
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadBalance = async () => {
     try {
       const data = await dashboardAPI.getBalance();
       if (data) {
-        setMpesaBalance(data.mpesa_balance);
+        setMpesaBalance(data.mpesa_balance ?? null);
         if (data.mshwari_balance) setMshwariBalance(data.mshwari_balance);
-        if (data.kcb_balance) setKcbBalance(data.kcb_balance);
+        if (data.kcb_balance)     setKcbBalance(data.kcb_balance);
       }
-    } catch (e) {}
+    } catch (_) {}
   };
 
   const loadNotifications = async () => {
     try {
       const data = await accountAPI.getNotifications();
-      if (data) {
+      if (Array.isArray(data)) {
         setNotifications(data);
         setUnreadCount(data.filter(n => !n.is_read).length);
       }
-    } catch (e) {}
+    } catch (_) {}
   };
 
   const login = useCallback((authData) => {
     authHelpers.saveAuth(authData);
     setUser(authData.user);
-    if (authData.mpesa_account) {
+    if (authData.mpesa_account?.balance !== undefined) {
       setMpesaBalance(authData.mpesa_account.balance);
     }
   }, []);
 
   const logout = useCallback(() => {
-    wsService?.disconnect();
+    wsRef.current?.disconnect();
+    wsRef.current = null;
     authHelpers.logout();
     setUser(null);
     setMpesaBalance(null);
+    setMshwariBalance(null);
+    setKcbBalance(null);
     setNotifications([]);
     setUnreadCount(0);
-  }, [wsService]);
-
-  const markNotificationsRead = useCallback(async () => {
-    await accountAPI.markNotificationsRead();
-    setUnreadCount(0);
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   }, []);
 
-  const refreshBalance = loadBalance;
+  const markNotificationsRead = useCallback(async () => {
+    try {
+      await accountAPI.markNotificationsRead();
+      setUnreadCount(0);
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    } catch (_) {}
+  }, []);
 
   return (
     <AuthContext.Provider value={{
@@ -98,7 +110,7 @@ export const AuthProvider = ({ children }) => {
       setMpesaBalance, setMshwariBalance, setKcbBalance,
       notifications, unreadCount,
       markNotificationsRead, loadNotifications,
-      refreshBalance,
+      refreshBalance: loadBalance,
     }}>
       {children}
     </AuthContext.Provider>
