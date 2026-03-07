@@ -21,12 +21,13 @@ const agentNav = [
 ];
 
 const adminNav = [
-  { icon: 'bi-speedometer2', label: 'Overview', path: '/admin' },
-  { icon: 'bi-people-fill', label: 'Users', path: '/admin/users' },
-  { icon: 'bi-arrow-left-right', label: 'Transactions', path: '/admin/transactions' },
-  { icon: 'bi-person-badge', label: 'Agents', path: '/admin/agents' },
-  { icon: 'bi-graph-up-arrow', label: 'Analytics', path: '/admin/analytics' },
-  { icon: 'bi-gear-fill', label: 'Settings', path: '/admin/settings' },
+  { icon: 'bi-grid-1x2-fill',      label: 'Overview',       path: '/admin'                  },
+  { icon: 'bi-people-fill',        label: 'Users',          path: '/admin/users'            },
+  { icon: 'bi-arrow-left-right',   label: 'Transactions',   path: '/admin/transactions'     },
+  { icon: 'bi-shop-window',        label: 'Agents',         path: '/admin/agents'           },
+  { icon: 'bi-receipt-cutoff',     label: 'Billers & Tills',path: '/admin/billers'          },
+  { icon: 'bi-bell-fill',          label: 'Notifications',  path: '/admin/notifications'    },
+  { icon: 'bi-gear-fill',          label: 'Settings',       path: '/admin/settings'         },
 ];
 
 const customerCareNav = [
