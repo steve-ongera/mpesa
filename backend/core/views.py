@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 from channels.layers import get_channel_layer
@@ -103,8 +103,9 @@ class LoginView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'Invalid credentials'}, status=401)
 
-        user = authenticate(request, username=user.username, password=password)
-        if not user:
+        # USERNAME_FIELD is phone_number — authenticate(username=) won't work.
+        # Check password directly against the stored hash.
+        if not user.check_password(password):
             return Response({'error': 'Invalid credentials'}, status=401)
 
         if not user.is_active:
